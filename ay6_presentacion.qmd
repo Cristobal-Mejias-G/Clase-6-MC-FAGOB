@@ -1,0 +1,515 @@
+---
+format:
+  clean-revealjs:
+    self-contained: true
+    slide-number: true
+    transition: fade
+    chalkboard: false
+lang: es
+execute:
+  echo: true
+  messaege: false
+---
+
+
+# {background-color="#40666e"}
+
+::: {style="text-align: left; padding-top: 10px; line-height: 1.3;"}
+
+<span style="font-size: 2.2em; font-weight: 600; color: #D49A3B; display: block; margin-bottom: 5px; line-height: 1.1;">Inferencia y Correlación</span>
+
+<span style="font-size: 1.2em; font-weight: 400; letter-spacing: 0.5px; display: block; margin-bottom: 10px;">Ayudantía 06 · FAGOB 2026</span>
+
+<span style="font-size: 1.2em; font-weight: 400;  display: block; margin-bottom: 40px;">Métodos Cuantitativos para la Administración Pública</span>
+
+<span style="font-size: 1.3em; display: block; color: #D1DCE2;">Cristóbal Mejías · Facultad de Gobierno</span>
+<span style="font-size: 1.3em; display: block; margin-bottom: 15px; color: #D1DCE2;">Lunes 25 de mayo, 2026</span>
+<span style="font-size: 1.3em; font-weight: 400;">[[Repositorio de ayudantías]](https://github.com/Cristobal-Mejias-G/metodos-cuantitativos-fagob){style="color: #cbdffa;"}</span>
+:::
+
+
+## Índice {style="font-size: 1.5em;"}
+
+### ¿Qué veremos hoy?
+
+<div style="font-size: 0.8em;">
+1. Inferencia estadística e intervalos de confianza
+2. Correlación de Pearson
+3. Ejercicios aplicados con ISSP Chile 2009
+</div>
+
+
+# Parte 1: Inferencia estadística {background-color="#40666e"}
+
+## ¿Por qué inferencia? {style="font-size: 1.5em;"}
+
+### Trabajamos con muestras, no con poblaciones completas. {style="font-size: 0.9em;"}
+
+<div style="font-size: 0.8em;">
+La inferencia estadística nos permite responder:
+
+- ¿Qué tan probable es que el valor observado en la muestra (estadístico) refleje el valor real en la población (parámetro)?
+- ¿Cuál es el rango plausible para ese valor poblacional?
+- ¿La diferencia que veo entre dos grupos es existe en la población o es producto del azar?
+</div>
+
+## Intervalo de confianza (IC) {style="font-size: 1.5em;"}
+
+<div style="font-size: 0.8em;">
+[Un IC al 95% nos dice:]{.fg style="--col: #eb2762"} si repitiéramos el muestreo 100 veces, 95 de estas, los intervalos construidos contendrían el parámetro poblacional verdadero. <br><br>
+</div>
+
+### Fórmula:
+$$IC = \bar{x} \pm Z \cdot \frac{s}{\sqrt{n}}$$
+
+
+## Ejemplos prácticos Inferencia {background-color="#40666e" style="font-size: 1.5em;"}
+
+<br> 
+
+<div style="font-size: 0.6em;">
+
+```{r initial}
+#| echo: true
+
+library(pacman)
+pacman::p_load(
+  tidyverse,    # manipulación de datos
+  dplyr,        # gramática de manipulación de datos 
+  broom,        # resultados de tests como data frame
+  kableExtra,   # formateo de tablas
+  Publish,      # intervalos de confianza legibles
+  rempsyc,      # tablas de resultados para tests
+  gginference,  # visualización de pruebas de hipótesis
+  flextable,    # tablas de resultados
+  sjPlot,       # gráficos y tablas
+  sjmisc        # tratamiento de datos
+)
+
+options(scipen = 999)
+rm(list = ls())
+
+# Cargamos la BBDD que usamos en la ayudantía 4: ISSP 2009
+load(url("https://github.com/Cristobal-Mejias-G/Clase-4-MC-FAGOB/raw/main/input/data/issp_2009_chile.RData"))
+
+```
+
+</div>
+
+## IC - Cálculo manual paso a paso 
+### Creamos un objeto con los estadísticos de la variable edad
+<br>
+
+```{r ic-manual1}
+#| output-location: fragment
+
+# Creamos un objeto con los estadísticos de la variable edad
+stats_edad <- issp %>%
+  summarise(
+    n        = n(),
+    Promedio = mean(age, na.rm = TRUE),
+    SD       = sd(age, na.rm = TRUE),
+    SE       = SD / sqrt(n)
+  )
+
+stats_edad
+```
+
+
+## IC - Cálculo manual paso a paso 
+### Fórmula manual: Media ± (Valor crítico × Error estándar) 
+<br>
+
+```{r ic-manual2}
+#| output-location: fragment
+# Fórmula manual: Media ± (Valor crítico × Error estándar)
+Z              <- 1.96
+err_margen     <- Z * stats_edad$SE
+limite_inf     <- stats_edad$Promedio - err_margen
+limite_sup     <- stats_edad$Promedio + err_margen
+
+# Visualicemos:
+cat("IC Manual (95%): [", round(limite_inf, 2), "-", round(limite_sup, 2), "]")
+```
+
+
+
+##
+### IC - Con Publish
+
+```{r ic-publish}
+#| output-location: fragment
+
+# Obtener intervalos 
+ic_edad <- Publish::ci.mean(issp$age, alpha = 0.05)
+ic_edad
+```
+
+<br>
+
+[Interpretación:]{.fg style="--col: #eb2762"}
+
+Con un 95% de confianza, la edad promedio de la población chilena se encuentra entre 45.67 y 47.45 años.
+
+## 
+### Los 5 pasos del test de hipótesis 
+
+<br>
+
+<div style="font-size: 1.5em;">
+
+```{r pasos-tabla}
+#| echo: false
+
+tibble(
+  Paso = 1:5,
+  Descripción = c(
+    "Formular H0 y H1",
+    "Calcular el error estándar y el estadístico de prueba (Z o t)",
+    "Especificar nivel de error (α) y el valor crítico correspondiente",
+    "Contrastar el valor empírico con el valor crítico",
+    "Interpretar los resultados y concluir"
+  )
+) |>
+  kableExtra::kable("markdown", col.names = c("Paso", "Descripción")) |>
+  kableExtra::kable_classic(full_width = TRUE, font_size = 22)
+```
+
+</div>
+
+
+## Test t - Diferencia de medias
+
+### Pregunta: ¿Existen diferencias en el estatus social subjetivo (topbot) entre hombres y mujeres?
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+[H0: No hay diferencias]{.fg style="--col: #e64173"}
+$$H_0: \mu_1 - \mu_2 = 0$$
+
+[H1: Hay diferencias]{.fg style="--col: #e64173"}
+$$H_a: \mu_1 - \mu_2 \neq 0$$
+
+:::
+
+::: {.column width="50%"}
+
+```{r test-t-estatus}
+# Código prueba t
+t_estatus <- t.test(issp$topbot ~ issp$sex,
+                    alternative = "two.sided",
+                    conf.level  = 0.95)
+
+t_estatus
+```
+
+:::
+::::
+
+## Tabla y visualización de test t 
+### Visualización con nice_table
+
+<br>
+
+````{r nice-table-f}
+#| eval: false 
+
+stats.table <- broom::tidy(t_estatus, conf_int = TRUE)
+rempsyc::nice_table(stats.table, broom = "t.test")
+````
+
+<br>
+
+````{r nice-table}
+#| eval: true
+#| echo: false
+stats.table <- broom::tidy(t_estatus, conf_int = TRUE)
+rempsyc::nice_table(stats.table, broom = "t.test")
+````
+
+
+## Tabla y visualización de test t
+### Visualización con ggtest
+
+:::: {.columns style="display: flex; align-items: center;"}
+::: {.column width="50%"}
+```{r ggttest-f}
+#| eval: false 
+gginference::ggttest(t_estatus)
+```
+:::
+::: {.column width="50%" style="font-size: 0.9em; margin-bottom: 20px;"}
+El área sombreada corresponde a la zona de rechazo de H₀ (α/2 en cada cola).
+:::
+::::
+
+<br>
+
+::: {style="text-align: center;"}
+```{r ggttest}
+#| eval: true
+#| echo: false
+#| fig-align: center
+#| fig-width: 7
+#| fig-height: 4
+gginference::ggttest(t_estatus)
+```
+:::
+
+# Parte 2: Correlación de Pearson {background-color="#40666e"}
+
+## Correlación de Pearson
+
+:::: {.columns}
+
+::: {.column width="50%"}
+#### Concepto
+La correlación de Pearson (r) mide la fuerza y dirección de la asociación lineal entre dos variables continuas.
+$$r = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{(n-1) \cdot s_x \cdot s_y}$$
+
+:::
+
+::: {.column width="50%"}
+#### Criterios de Cohen (1988, 1992)
+
+| Valor \|r\| | Tamaño de efecto |
+|------------ |------------------|
+| ~ 0.10      | Pequeño          |
+| ~ 0.30      | Mediano          | 
+| ~ 0.30 y +  | Grande           |
+:::
+::::
+
+## Test de correlación
+### Pregunta: ¿Se relacionan los años de educación (`educyrs`) con el decil de ingreso (`income`)?
+
+```{r cor-test}
+# H0: r = 0 (No hay relación lineal)
+# HA: r != 0 (Existe relación lineal)
+
+cor_test_edu <- cor.test(issp$educyrs, issp$income,
+                         method      = "pearson",
+                         use = "complete.obs")
+
+cor_test_edu
+```
+
+## Tabla y visualización de cor.test
+### Visualización con nice_table
+
+```{r cor-tabla-f}
+#| eval: false
+nice_table(tidy(cor_test_edu), broom = "cor.test")
+
+```
+
+<br>
+
+```{r cor-tabla}
+#| eval: true
+#| echo: false
+nice_table(tidy(cor_test_edu), broom = "cor.test")
+
+```
+
+## Tabla y visualización de cor.test
+### Visualización con sjPlot
+
+```{r scatter-edu}
+#| echo: true
+
+sjPlot::plot_scatter(data = issp, 
+                     x = educyrs,
+                     y = income)
+
+```
+
+
+# Parte 3: Ejercicios aplicados {background-color="#40666e"}
+
+## Datos a utilizar
+
+```{r explorar-issp-f}
+#| eval: false
+
+tabla_issp <- sjmisc::descr(issp,
+      show = c("label","range", "mean", "sd", "NA.prc", "n"))%>% # Selecciona estadísticos
+  kable(.,"markdown" # Esto es para que se vea bien en quarto
+  )
+
+tabla_issp
+
+```
+
+<div style="font-size: 0.8em;">
+
+```{r explorar-issp}
+#| eval: true 
+#| echo: false
+
+tabla_issp <- sjmisc::descr(issp,
+      show = c("label","range", "mean", "sd", "NA.prc", "n"))%>% # Selecciona estadísticos
+  kable(.,"markdown" # Esto es para que se vea bien en quarto
+  )
+
+tabla_issp
+
+```
+
+</div>
+
+## Ejercicio 1
+### Pregunta: ¿Existen diferencias en los años de escolaridad (`educyrs`) según el sexo de los encuestados (`sex`)?
+
+### Ej.1: Paso 0: Preparar datos 
+
+```{r ej1-prep}
+
+issp_subset1 <- issp %>%
+  dplyr::select(sex, educyrs) %>%
+  na.omit()
+```
+
+
+##
+### Tabla descriptiva
+
+```{r ej1-tabla}
+
+issp_subset1 %>%
+  dplyr::group_by(sex) %>%
+  dplyr::summarise(
+    Obs.     = n(),
+    Promedio = round(mean(educyrs, na.rm = TRUE), 2),
+    SD       = round(sd(educyrs, na.rm = TRUE), 2)
+  ) %>%
+  kableExtra::kable(
+    format    = "markdown",
+    align     = "c",
+    col.names = c("Sexo", "N", "Promedio años educ.", "Desv. estándar"),
+    caption   = "Tabla. Años de educación según sexo"
+  ) %>%
+  kableExtra::kable_classic(full_width = FALSE, font_size = 18)
+```
+
+## Ej. 1: Pasos 1 a 4
+### Paso 1: Hipótesis
+- H0: No hay diferencias en los años de educación entre hombres y mujeres 
+- H1: Hay diferencias en los años de educación entre hombres y mujeres 
+
+### Pasos 2, 3 y 4 con R:
+
+```{r ej1-test}
+
+test_ej1 <- t.test(issp_subset1$educyrs ~ issp_subset1$sex,
+                   alternative = "two.sided",
+                   conf.level  = 0.95)
+
+test_ej1
+```
+
+
+## Ej. 1: Tabla y visualización
+### Usando nice_table
+
+```{r ej1-tabla-test}
+
+stats.table <- broom::tidy(test_ej1, conf_int = TRUE)
+
+rempsyc::nice_table(stats.table, broom = "t.test")
+```
+
+## Ej. 1: Tabla y visualización
+### Usando ggttest
+```{r ej1-viz}
+
+gginference::ggttest(test_ej1)
+```
+
+## Ej. 1: Paso 5
+#### Interpretación
+
+La prueba t evalúa la diferencia de medias en años de educación según sexo.
+
+La diferencia observada es de 0,56 años (t = 2,37, p < 0,05).
+
+El valor p indica que la probabilidad de observar esta diferencia bajo H0 es menor al 5%. Con un 95% de confianza, rechazamos H0: existe evidencia de que el nivel educacional difiere entre hombres y mujeres, siendo el promedio de los hombres levemente superior.
+
+## Ejercicio 2
+### Pregunta: ¿Existen diferencias en la posición social subjetiva (`topbot`) de las mujeres en edad de jubilación (60 años o más) comparado con las que aún no llegan a esa edad?
+
+## Ej. 2: Preparación de datos
+
+```{r ej2-prep}
+
+issp_subset2 <- issp %>%
+  dplyr::select(sex, age, topbot) %>%
+  dplyr::filter(sex == 2) %>%
+  dplyr::mutate(jubilada = dplyr::case_when(       # Creamos una variable con mutate titulada "jubilada"..
+    age < 60  ~ "No",                              # Si la persona tiene menos de 60 años, no es considerada jubliada
+    age >= 60 ~ "Si"                               # Si la personas tiene 60 o más, se considera jubilada
+  )) %>%
+  na.omit()
+
+```
+
+## Ej. 2: Instrucciones
+
+### A partir de aquí, continúa de manera autónoma:
+
+1. Genera una tabla descriptiva de `topbot` según `jubilada` (n, media, SD)
+2. Formula H0 y H1 en función de la pregunta
+3. Ejecuta el test t con 95% de confianza
+4. Presenta resultados con `nice_table()` y visualiza con `ggttest()`
+5. Interpreta: ¿es posible rechazar H0?
+
+## Ejercicio 3 
+### Pregunta: ¿Existen diferencias en la percepción de desigualdad económica (`perc_ineq`) según el nivel de ingreso de los encuestados (deciles bajos vs. altos)?
+
+### Instrucciones:
+
+1. Cree una variable que clasifique a los encuestados en deciles bajos (1–5) y deciles altos (6–10)
+2. Genera una tabla descriptiva de `perc_ineq` según la variable decil recodificada (n, media, SD)
+3. Formula H0 y H1 en función de la pregunta
+4. Ejecuta el test t con 95% de confianza
+5. Presenta resultados con `nice_table()` y visualiza con `ggttest()`
+6. Interpreta: ¿es posible rechazar H0?
+
+## Ejercicio 4
+
+### Pregunta: ¿Existe una diferencia en la percepción del conflicto entre ricos y pobres (`conflict_rp`) según el nivel educacional alcanzado por los encuestados?
+
+### Instrucciones:
+
+1. Cree una variable que clasifique a los encuestados en menos años de educación (1-13) y más años de educación (14-25)
+2. Genera una tabla descriptiva de `conflict_rp` según la variable educación recodificada (n, media, SD)
+3. Formula H0 y H1 en función de la pregunta
+4. Ejecuta el test t con 95% de confianza
+5. Presenta resultados con `nice_table()` y visualiza con `ggttest()`
+6. Interpreta: ¿es posible rechazar H0?
+
+## Ejercicio 5
+
+### Pregunta: ¿Qué relación existe entre el decil de ingreso (`income`) y la posición social subjetiva (`topbot`)?
+
+### Instrucciones:
+
+1. Prepare un subset con las variables de interés
+2. Genere una nube de puntos con `plot_scatter`
+3. Formula H0 y H1 en función de la pregunta
+4. Ejecuta el cor.test solo usando casos completos (sin NA)
+5. Presenta resultados con `nice_table()`
+6. Interpreta: ¿es posible rechazar H0?
+
+# Resumen {background-color="#40666e"}
+
+##
+### Lo que vimos hoy
+
+- Intervalo de confianza: rango plausible para el parámetro poblacional, calculado manual y con `Publish`
+- Test t de Student: contraste de medias entre dos grupos independientes
+- Correlación de Pearson: asociación lineal entre dos variables continuas 
+
+# Nos vemos en la próxima ayudantía, donde veremos regresión lineal simple y múltiple. ¡Gracias por su atención!
