@@ -450,4 +450,6 @@ issp_subset1 %>%
 - Correlación de Pearson: asociación lineal entre dos variables continuas
 - Regresión lineal simple: Coeficientes e interpretación
 
+### Acceso a [repositorio de ayudantías](https://github.com/Cristobal-Mejias-G/metodos-cuantitativos-fagob)
+
 # Nos vemos en la próxima ayudantía. ¡Gracias por su atención! {background-color="#40666e"}
