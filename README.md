@@ -1,4 +1,4 @@
-# Ayúdantía 6: Inferencia y Correlación
+# Ayúdantía 6: Inferencia, correlaciín y regresión lineal
 ## Curso: Métodos Cuantitativos para la Administración Pública. Profesor: Carlos Budnevich
 ### Ayudante: Cristóbal Mejías
 
